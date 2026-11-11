@@ -30,7 +30,7 @@ def download(corpus: Corpus) -> None:
 
 
 def ingest(corpus: Corpus) -> list[Chunk]:
-    from ragkit.ingestion.elements import extract
+    from ragkit.ingestion.elements import apply_tags, extract
     from ragkit.ingestion.parse import converter, parse
 
     conv = converter()
@@ -40,7 +40,8 @@ def ingest(corpus: Corpus) -> list[Chunk]:
     for d in corpus.documents:
         t0 = time.time()
         doc = parse(corpus.raw_dir / d.file, corpus.processed_dir / "docling", conv)
-        elements = extract(doc, source=d.file)
+        elements = extract(doc, d.file, corpus.heading_rules, corpus.default_heading_level)
+        elements = apply_tags(elements, corpus.tags)
         if profile:
             elements = profile.process(elements)
         new = chunker.chunk(elements)

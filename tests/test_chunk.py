@@ -57,3 +57,15 @@ def test_tiny_sibling_section_is_merged():
     chunks = HeadingChunker().chunk(els)
     assert len(chunks) == 1
     assert "### Goal\nShort goal." in chunks[0].text
+
+
+def test_heading_rules_and_tags():
+    from ragkit.ingestion.elements import HeadingRule, TagRule, apply_tags, heading_level
+
+    rules = [HeadingRule(r"^[A-Z]{3} \d+:", 1), HeadingRule(r"^[A-Z]{3}\d{2}-BP\d{2}", 2)]
+    assert heading_level(None, "SEC 8: How do you protect data?", rules, 3) == 1
+    assert heading_level(None, "SEC08-BP02 Enforce encryption", rules, 3) == 2
+    assert heading_level(None, "Implementation steps", rules, 3) == 3
+    els = [el("text", "Use KMS.", headings=("SEC 8: Q", "SEC08-BP02 Enforce", "Steps"))]
+    tagged = apply_tags(els, [TagRule("best_practice", r"^([A-Z]{3}\d{2}-BP\d{2})")])
+    assert tagged[0].extra == {"best_practice": "SEC08-BP02"}

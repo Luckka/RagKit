@@ -18,6 +18,7 @@ from pathlib import Path
 
 import yaml
 
+from ragkit.ingestion.elements import HeadingRule, TagRule
 from ragkit.retrieval.query_hints import QueryHinter, RegexHinter
 
 CORPORA_DIR = Path("corpora")
@@ -47,6 +48,9 @@ class Corpus:
     min_chars: int = 400
     profile: str | None = None  # "package.module:ClassName"
     hints: list[HintConfig] = field(default_factory=list)
+    heading_rules: list[HeadingRule] = field(default_factory=list)
+    default_heading_level: int | None = None
+    tags: list[TagRule] = field(default_factory=list)
     golden_size: int = 25
     golden_seed: int = 42
 
@@ -55,6 +59,7 @@ class Corpus:
         raw = yaml.safe_load((root / name / "corpus.yaml").read_text(encoding="utf-8"))
         chunking = raw.pop("chunking", {}) or {}
         golden = raw.pop("golden", {}) or {}
+        headings = raw.pop("headings", {}) or {}
         return cls(
             name=raw["name"],
             description=raw.get("description", ""),
@@ -64,6 +69,9 @@ class Corpus:
             min_chars=chunking.get("min_chars", 400),
             profile=raw.get("profile"),
             hints=[HintConfig(**h) for h in raw.get("hints", []) or []],
+            heading_rules=[HeadingRule(**r) for r in headings.get("rules", []) or []],
+            default_heading_level=headings.get("default_level"),
+            tags=[TagRule(**t) for t in raw.get("tags", []) or []],
             golden_size=golden.get("size", 25),
             golden_seed=golden.get("seed", 42),
         )

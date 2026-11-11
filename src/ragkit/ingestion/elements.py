@@ -11,6 +11,7 @@ Profile, which post-processes these elements without forking the pipeline.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -35,7 +36,63 @@ class Profile(Protocol):
     def process(self, elements: list[Element]) -> list[Element]: ...
 
 
-def extract(doc: DoclingDocument, source: str) -> list[Element]:
+@dataclass
+class HeadingRule:
+    """Assigns a heading level by pattern. PDF parsers often report every heading at the same
+    level, which flattens the hierarchy: a chunk under "Implementation steps" loses the
+    best practice it belongs to. Rules restore the tree from the document's own conventions."""
+
+    pattern: str
+    level: int
+
+    def __post_init__(self):
+        self._re = re.compile(self.pattern)
+
+    def matches(self, text: str) -> bool:
+        return bool(self._re.search(text))
+
+
+@dataclass
+class TagRule:
+    """Copies an identifier from the nearest matching heading into element metadata."""
+
+    field: str
+    pattern: str
+
+    def __post_init__(self):
+        self._re = re.compile(self.pattern)
+
+    def value(self, headings: list[str]) -> str | None:
+        for h in reversed(headings):
+            if m := self._re.search(h):
+                return m.group(1) if m.groups() else m.group(0)
+        return None
+
+
+def heading_level(item, text: str, rules: list[HeadingRule], default: int | None) -> int:
+    for rule in rules:
+        if rule.matches(text):
+            return rule.level
+    if rules and default is not None:
+        return default
+    return getattr(item, "level", 1) or 1
+
+
+def apply_tags(elements: list[Element], tags: list[TagRule]) -> list[Element]:
+    for e in elements:
+        for tag in tags:
+            if (value := tag.value(e.headings)) is not None:
+                e.extra[tag.field] = value
+    return elements
+
+
+def extract(
+    doc: DoclingDocument,
+    source: str,
+    heading_rules: list[HeadingRule] | None = None,
+    default_level: int | None = None,
+) -> list[Element]:
+    rules = heading_rules or []
     elements: list[Element] = []
     stack: list[tuple[int, str]] = []  # (level, title)
     for item, _ in doc.iterate_items():  # true reading order
@@ -52,7 +109,7 @@ def extract(doc: DoclingDocument, source: str) -> list[Element]:
         if not text:
             continue
         if isinstance(item, SectionHeaderItem):
-            level = getattr(item, "level", 1) or 1
+            level = heading_level(item, text, rules, default_level)
             stack = [(lv, t) for lv, t in stack if lv < level] + [(level, text)]
             elements.append(Element("heading", text, page, source, [t for _, t in stack]))
             continue
