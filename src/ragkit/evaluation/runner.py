@@ -30,16 +30,21 @@ class CachedReranker:
         self._last = 0.0
 
     def rerank(self, query: str, documents: list[str], top_n: int) -> list[tuple[int, float]]:
-        key = hashlib.md5(f"{query}|{top_n}|{'|'.join(documents)}".encode()).hexdigest()
+        # Keyed by the candidate *set*, not its order: approximate nearest-neighbour search can
+        # return the same candidates in a slightly different order between runs.
+        digests = [hashlib.md5(d.encode()).hexdigest() for d in documents]
+        key = hashlib.md5(f"{query}|{top_n}|{'|'.join(sorted(digests))}".encode()).hexdigest()
         if key not in self.cache:
             wait = self.min_interval_s - (time.time() - self._last)
             if wait > 0:
                 time.sleep(wait)
-            self.cache[key] = self.inner.rerank(query, documents, top_n)
+            order = self.inner.rerank(query, documents, top_n)
+            self.cache[key] = [(digests[i], score) for i, score in order]
             self._last = time.time()
             self.path.parent.mkdir(parents=True, exist_ok=True)
             self.path.write_text(json.dumps(self.cache))
-        return [tuple(x) for x in self.cache[key]]
+        position = {d: i for i, d in enumerate(digests)}
+        return [(position[d], score) for d, score in self.cache[key]]
 
 
 def configs(

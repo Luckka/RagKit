@@ -77,3 +77,14 @@ def test_cached_reranker_calls_once(tmp_path):
     again = CachedReranker(Inner(), tmp_path / "cache.json")
     assert again.rerank("q", ["a", "b"], 2) == [(1, 0.9), (0, 0.1)]
     assert calls == ["q"]
+
+
+def test_cached_reranker_ignores_candidate_order(tmp_path):
+    class Inner:
+        def rerank(self, query, documents, top_n):
+            return [(documents.index("b"), 0.9)]
+
+    r = CachedReranker(Inner(), tmp_path / "cache.json")
+    assert r.rerank("q", ["a", "b"], 1) == [(1, 0.9)]
+    r.inner = None  # a second call must come from the cache
+    assert r.rerank("q", ["b", "a"], 1) == [(0, 0.9)]
