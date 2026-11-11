@@ -53,6 +53,7 @@ class Corpus:
     tags: list[TagRule] = field(default_factory=list)
     golden_size: int = 25
     golden_seed: int = 42
+    drop_toc: bool = True  # drop table-of-contents chunks
     dedup_threshold: float | None = None  # shingle Jaccard; None disables duplicate detection
     dedup_drop: bool = False  # keep only the first copy, in document order
 
@@ -70,6 +71,7 @@ class Corpus:
             documents=[Document(**d) for d in raw.get("documents", [])],
             max_chars=chunking.get("max_chars", 1600),
             min_chars=chunking.get("min_chars", 400),
+            drop_toc=chunking.get("drop_toc", True),
             profile=raw.get("profile"),
             hints=[HintConfig(**h) for h in raw.get("hints", []) or []],
             heading_rules=[HeadingRule(**r) for r in headings.get("rules", []) or []],

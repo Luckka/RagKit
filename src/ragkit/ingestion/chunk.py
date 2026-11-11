@@ -13,6 +13,7 @@ Rules:
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass, field
 from itertools import groupby
 
@@ -41,6 +42,14 @@ class Chunk:
             "has_table": self.has_table,
         }
         return base | {k: v for k, v in self.extra.items() if v is not None}
+
+
+DOT_LEADER = re.compile(r"\.{5,}\s*\|?\s*\d+")
+
+
+def looks_like_toc(text: str, min_entries: int = 3) -> bool:
+    """Table-of-contents chunks ("Title ........ 42") match many questions and answer none."""
+    return len(DOT_LEADER.findall(text)) >= min_entries
 
 
 def compact_table(md: str) -> str:

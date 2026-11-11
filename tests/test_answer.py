@@ -1,7 +1,14 @@
 from fastapi.testclient import TestClient
 
 from ragkit.api.main import app, get_answerer_factory
-from ragkit.generation.answer import NOT_FOUND, REFUSAL, Answerer, build_prompt, parse_citations
+from ragkit.generation.answer import (
+    NOT_FOUND,
+    REFUSAL,
+    Answerer,
+    build_prompt,
+    collapse_twins,
+    parse_citations,
+)
 from ragkit.retrieval.hybrid import Hit
 
 
@@ -80,6 +87,12 @@ def test_rerank_path_and_min_score_filter():
     ctx = answerer.contexts("q?")
     assert retriever.calls == [30]
     assert [h.chunk_id for h in ctx] == ["c5", "c4"]  # third scored 0.4, dropped
+
+
+def test_collapse_twins_keeps_higher_ranked_copy():
+    a = hit(1)
+    a.metadata["also_in"] = ["doc2.pdf#p2-3"]
+    assert [h.chunk_id for h in collapse_twins([a, hit(2), hit(3)])] == ["c1", "c3"]
 
 
 def test_ask_endpoint_uses_injected_answerer():

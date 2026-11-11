@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from ragkit.ingestion.dedup import location
 from ragkit.providers.base import LLMProvider, RerankProvider
 from ragkit.retrieval.hybrid import Hit
 from ragkit.retrieval.rerank import rerank
@@ -87,6 +88,20 @@ def parse_citations(text: str, hits: list[Hit]) -> list[Citation]:
     return out
 
 
+def collapse_twins(hits: list[Hit]) -> list[Hit]:
+    """Drop a hit when a higher-ranked hit is its near-identical copy (see ingestion.dedup)."""
+    covered: set[str] = set()
+    out = []
+    for h in hits:
+        m = h.metadata
+        here = location(str(m.get("source", "")), m.get("page_start", 0), m.get("page_end", 0))
+        if here in covered:
+            continue
+        covered.update(m.get("also_in") or [])
+        out.append(h)
+    return out
+
+
 class Answerer:
     def __init__(
         self,
@@ -105,13 +120,15 @@ class Answerer:
         self.min_score = min_score  # rerank score below which a passage is dropped
 
     def contexts(self, question: str) -> list[Hit]:
+        # Over-fetch so that collapsing duplicate passages still leaves top_k distinct ones
         if self.reranker is None:
-            return self.retriever.search(question, top_k=self.top_k)
-        hits = self.retriever.search(question, top_k=self.candidates)
-        hits = rerank(question, hits, self.reranker, top_k=self.top_k)
-        if self.min_score is not None:
-            hits = [h for h in hits if h.score >= self.min_score]
-        return hits
+            hits = self.retriever.search(question, top_k=self.top_k * 2)
+        else:
+            hits = self.retriever.search(question, top_k=self.candidates)
+            hits = rerank(question, hits, self.reranker, top_k=self.top_k * 2)
+            if self.min_score is not None:
+                hits = [h for h in hits if h.score >= self.min_score]
+        return collapse_twins(hits)[: self.top_k]
 
     def ask(self, question: str) -> Answer:
         hits = self.contexts(question)

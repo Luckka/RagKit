@@ -8,7 +8,7 @@ import urllib.request
 from dataclasses import asdict
 
 from ragkit.corpus import Corpus
-from ragkit.ingestion.chunk import Chunk, HeadingChunker
+from ragkit.ingestion.chunk import Chunk, HeadingChunker, looks_like_toc
 from ragkit.providers import get_embeddings
 from ragkit.retrieval.hybrid import HybridRetriever
 from ragkit.retrieval.sparse import BM25Encoder
@@ -45,6 +45,8 @@ def ingest(corpus: Corpus) -> list[Chunk]:
         if profile:
             elements = profile.process(elements)
         new = chunker.chunk(elements)
+        if corpus.drop_toc:
+            new = [c for c in new if not looks_like_toc(c.text)]
         chunks += new
         print(f"{d.file}: {doc.num_pages()} pages, {len(new)} chunks ({time.time() - t0:.0f}s)")
 

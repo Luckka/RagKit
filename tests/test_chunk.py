@@ -69,3 +69,11 @@ def test_heading_rules_and_tags():
     els = [el("text", "Use KMS.", headings=("SEC 8: Q", "SEC08-BP02 Enforce", "Steps"))]
     tagged = apply_tags(els, [TagRule("best_practice", r"^([A-Z]{3}\d{2}-BP\d{2})")])
     assert tagged[0].extra == {"best_practice": "SEC08-BP02"}
+
+
+def test_looks_like_toc():
+    from ragkit.ingestion.chunk import looks_like_toc
+
+    toc = "| Intro ........ | 3 |\n| Setup ........ | 7 |\n| Usage ........ | 12 |"
+    assert looks_like_toc(toc)
+    assert not looks_like_toc("Wait... then continue. Done..... ok")
