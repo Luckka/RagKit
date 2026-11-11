@@ -50,7 +50,7 @@ def cmd_golden(corpus: Corpus) -> None:
     print(f"{len(rows)} questions -> {out} (draft: review before trusting it)")
 
 
-def cmd_eval(corpus: Corpus, rerank_interval: float, no_rerank: bool) -> None:
+def cmd_eval(corpus: Corpus, rerank_interval: float, no_rerank: bool, match: str, tag: str) -> None:
     from ragkit.evaluation.runner import CachedReranker, configs, evaluate, to_markdown
 
     path = corpus.eval_dir / "golden.jsonl"
@@ -63,10 +63,12 @@ def cmd_eval(corpus: Corpus, rerank_interval: float, no_rerank: bool) -> None:
 
         cache = corpus.eval_dir / "rerank_cache.json"
         reranker = CachedReranker(get_reranker(), cache, rerank_interval)
-    report = evaluate(golden, configs(pipeline.retriever(corpus), reranker))
+    fields = tuple(match.split(","))
+    report = evaluate(golden, configs(pipeline.retriever(corpus), reranker), fields)
     table = to_markdown(report, len(golden))
-    (corpus.eval_dir / "results.md").write_text(table + "\n")
-    (corpus.eval_dir / "results.json").write_text(json.dumps(report, indent=2))
+    suffix = f"_{tag}" if tag else ""
+    (corpus.eval_dir / f"results{suffix}.md").write_text(table + "\n")
+    (corpus.eval_dir / f"results{suffix}.json").write_text(json.dumps(report, indent=2))
     print(table)
 
 
@@ -83,6 +85,8 @@ def main(argv: list[str] | None = None) -> None:
     e.add_argument("corpus")
     e.add_argument("--rerank-interval", type=float, default=0.0, help="seconds between calls")
     e.add_argument("--no-rerank", action="store_true")
+    e.add_argument("--match", default="source,section", help="metadata fields that must match")
+    e.add_argument("--tag", default="", help="suffix for the results files")
     args = p.parse_args(argv)
 
     corpus = Corpus.load(args.corpus)
@@ -98,7 +102,7 @@ def main(argv: list[str] | None = None) -> None:
         case "golden":
             cmd_golden(corpus)
         case "eval":
-            cmd_eval(corpus, args.rerank_interval, args.no_rerank)
+            cmd_eval(corpus, args.rerank_interval, args.no_rerank, args.match, args.tag)
 
 
 if __name__ == "__main__":

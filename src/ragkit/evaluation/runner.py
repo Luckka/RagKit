@@ -71,10 +71,18 @@ def configs(
     return out
 
 
-def evaluate(golden: list[dict], runs: dict[str, Callable[[str], list[Hit]]]) -> dict[str, dict]:
+def evaluate(
+    golden: list[dict],
+    runs: dict[str, Callable[[str], list[Hit]]],
+    match_fields: tuple[str, ...] = ("source", "section"),
+) -> dict[str, dict]:
+    """match_fields=("source",) judges relevance by page overlap only, which keeps a golden set
+    valid across different chunking strategies (chunk ids and sections change, pages do not)."""
     report = {}
     for name, fn in runs.items():
-        ranks = [first_hit_rank(as_rows(fn(g["question"])), g) for g in golden]
+        ranks = [
+            first_hit_rank(as_rows(fn(g["question"])), g, match_fields=match_fields) for g in golden
+        ]
         report[name] = summarize(ranks) | {"ranks": ranks}
     return report
 
