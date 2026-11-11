@@ -1,0 +1,16 @@
+# Public demo corpus: AWS Well-Architected Framework (official AWS documentation PDFs).
+# Documents are downloaded at runtime by `ragkit download` and are never committed.
+name: aws-well-architected
+description: AWS Well-Architected Framework overview and the Security pillar whitepaper.
+language: en
+documents:
+  - file: wellarchitected-framework.pdf
+    url: https://docs.aws.amazon.com/pdfs/wellarchitected/latest/framework/wellarchitected-framework.pdf
+  - file: wellarchitected-security-pillar.pdf
+    url: https://docs.aws.amazon.com/pdfs/wellarchitected/latest/security-pillar/wellarchitected-security-pillar.pdf
+chunking:
+  max_chars: 1600
+  min_chars: 400
+golden:
+  size: 25
+  seed: 42
