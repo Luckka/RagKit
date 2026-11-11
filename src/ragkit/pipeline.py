@@ -48,6 +48,14 @@ def ingest(corpus: Corpus) -> list[Chunk]:
         chunks += new
         print(f"{d.file}: {doc.num_pages()} pages, {len(new)} chunks ({time.time() - t0:.0f}s)")
 
+    if corpus.dedup_threshold is not None:
+        from ragkit.ingestion.dedup import dedup
+
+        before = len(chunks)
+        chunks = dedup(chunks, corpus.dedup_threshold, corpus.dedup_drop)
+        with_twins = sum(1 for c in chunks if c.extra.get("also_in"))
+        print(f"dedup: {with_twins} chunks have near-duplicates, {before - len(chunks)} dropped")
+
     corpus.processed_dir.mkdir(parents=True, exist_ok=True)
     with corpus.chunks_path.open("w", encoding="utf-8") as f:
         for c in chunks:

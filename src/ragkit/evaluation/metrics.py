@@ -5,6 +5,8 @@
 - MRR@k: mean of 1/rank of the first relevant chunk (1st = 1.0, 2nd = 0.5, outside k = 0).
 """
 
+from ragkit.ingestion.dedup import parse_location
+
 
 def is_relevant(
     retrieved: dict, expected: dict, match_fields: tuple[str, ...] = ("source", "section")
@@ -16,10 +18,22 @@ def is_relevant(
     same_place = all(
         expected.get(f) is not None and retrieved.get(f) == expected.get(f) for f in match_fields
     )
-    overlap = retrieved.get("page_start", 0) <= expected.get("page_end", 0) and retrieved.get(
-        "page_end", 0
-    ) >= expected.get("page_start", 0)
-    return same_place and overlap
+    if same_place and _overlap(
+        retrieved.get("page_start", 0), retrieved.get("page_end", 0), expected
+    ):
+        return True
+    # A near-identical copy elsewhere is the same answer. Locations carry only source and
+    # pages, so they count only when matching on those fields.
+    if set(match_fields) <= {"source"}:
+        for loc in retrieved.get("also_in") or []:
+            source, start, end = parse_location(loc)
+            if source == expected.get("source") and _overlap(start, end, expected):
+                return True
+    return False
+
+
+def _overlap(start: int, end: int, expected: dict) -> bool:
+    return start <= expected.get("page_end", 0) and end >= expected.get("page_start", 0)
 
 
 def first_hit_rank(results: list[dict], expected: dict, **kw) -> int | None:

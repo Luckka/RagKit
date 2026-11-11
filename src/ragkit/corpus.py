@@ -53,6 +53,8 @@ class Corpus:
     tags: list[TagRule] = field(default_factory=list)
     golden_size: int = 25
     golden_seed: int = 42
+    dedup_threshold: float | None = None  # shingle Jaccard; None disables duplicate detection
+    dedup_drop: bool = False  # keep only the first copy, in document order
 
     @classmethod
     def load(cls, name: str, root: Path = CORPORA_DIR) -> Corpus:
@@ -60,6 +62,7 @@ class Corpus:
         chunking = raw.pop("chunking", {}) or {}
         golden = raw.pop("golden", {}) or {}
         headings = raw.pop("headings", {}) or {}
+        dedup = raw.pop("dedup", {}) or {}
         return cls(
             name=raw["name"],
             description=raw.get("description", ""),
@@ -74,6 +77,8 @@ class Corpus:
             tags=[TagRule(**t) for t in raw.get("tags", []) or []],
             golden_size=golden.get("size", 25),
             golden_seed=golden.get("seed", 42),
+            dedup_threshold=dedup.get("threshold"),
+            dedup_drop=dedup.get("drop", False),
         )
 
     # --- paths -------------------------------------------------------------------------

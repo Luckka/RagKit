@@ -11,6 +11,11 @@ documents:
 chunking:
   max_chars: 1600
   min_chars: 400
+# The Framework PDF embeds most of the Security pillar word for word.
+# Twins are recorded in `also_in`; set drop: true to index only the first copy.
+dedup:
+  threshold: 0.8
+  drop: false
 golden:
   size: 25
   seed: 42
