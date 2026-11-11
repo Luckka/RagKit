@@ -14,3 +14,28 @@ chunking:
 golden:
   size: 25
   seed: 42
+# The PDFs report every heading at the same level. These rules rebuild the tree:
+# pillar question (SEC 8: ...) > best practice (SEC08-BP02 ...) > standard subsection.
+# Any other heading starts a new top-level section.
+headings:
+  default_level: 1
+  rules:
+    - pattern: '^[A-Z]{3,4} \d+:'
+      level: 1
+    - pattern: '^[A-Z]{3,4}\d{2}-BP\d{2}'
+      level: 2
+    - pattern: '^(Best practices|Resources)$'
+      level: 2
+    - pattern: '^(Implementation (guidance|steps)|Common anti-patterns|Benefits of establishing|Desired outcome|Level of risk|Related (documents|videos|best practices|examples|tools|services)|Customer example|Note)'
+      level: 3
+# Identifiers copied from headings into chunk metadata
+tags:
+  - field: best_practice
+    pattern: '^([A-Z]{3,4}\d{2}-BP\d{2})'
+  - field: question
+    pattern: '^([A-Z]{3,4} \d+):'
+# Questions that cite a best practice ("sec08-bp02", "SEC 8 BP 2") boost its chunks
+hints:
+  - field: best_practice
+    pattern: '(?i)\b([a-z]{3,4})\s?(\d{1,2})[-\s]?bp\s?(\d{1,2})\b'
+    template: '{0}{1:0>2}-BP{2:0>2}'
