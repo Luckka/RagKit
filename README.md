@@ -162,4 +162,4 @@ tests/          offline unit tests, all external services faked
 
 ## License
 
-MIT, see [`pyproject.toml`](pyproject.toml).
+[MIT](LICENSE)
