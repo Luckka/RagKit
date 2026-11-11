@@ -13,7 +13,9 @@ def is_relevant(
     same pages (e.g. the other half of a table that was split across chunks)."""
     if retrieved["chunk_id"] == expected["source_chunk_id"]:
         return True
-    same_place = all(retrieved.get(f) == expected.get(f) for f in match_fields)
+    same_place = all(
+        expected.get(f) is not None and retrieved.get(f) == expected.get(f) for f in match_fields
+    )
     overlap = retrieved.get("page_start", 0) <= expected.get("page_end", 0) and retrieved.get(
         "page_end", 0
     ) >= expected.get("page_start", 0)
