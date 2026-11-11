@@ -4,6 +4,7 @@ ragkit download aws-well-architected   fetch the documents listed in corpus.yaml
 ragkit ingest   aws-well-architected   parse with Docling and chunk
 ragkit index    aws-well-architected   embed + BM25 and upsert to Pinecone (one namespace)
 ragkit search   aws-well-architected "how do I protect data at rest?"
+ragkit ask      aws-well-architected "how do I protect data at rest?"
 ragkit golden   aws-well-architected   draft a synthetic golden set for review
 ragkit eval     aws-well-architected   compare retrieval configurations
 """
@@ -29,6 +30,19 @@ def cmd_search(corpus: Corpus, question: str, rerank: bool) -> None:
         meta = h.metadata
         print(f"{pos}. [{h.score:.4f}] {meta.get('source')} p.{meta.get('page_start')} {h.ranks}")
         print(f"   {meta.get('section')}")
+
+
+def cmd_ask(corpus: Corpus, question: str) -> None:
+    from ragkit.generation.answer import Answerer
+    from ragkit.providers import get_llm, get_reranker
+
+    result = Answerer(pipeline.retriever(corpus), get_llm(), get_reranker()).ask(question)
+    print(result.answer)
+    if result.citations:
+        print("\nSources:")
+    for c in result.citations:
+        pages = f"p. {c.page_start}" + (f"-{c.page_end}" if c.page_end != c.page_start else "")
+        print(f"  [{c.ref}] {c.source}, {pages}, {c.section}")
 
 
 def cmd_golden(corpus: Corpus) -> None:
@@ -81,6 +95,9 @@ def main(argv: list[str] | None = None) -> None:
     s.add_argument("corpus")
     s.add_argument("question")
     s.add_argument("--rerank", action="store_true")
+    a = sub.add_parser("ask")
+    a.add_argument("corpus")
+    a.add_argument("question")
     e = sub.add_parser("eval")
     e.add_argument("corpus")
     e.add_argument("--rerank-interval", type=float, default=0.0, help="seconds between calls")
@@ -99,6 +116,8 @@ def main(argv: list[str] | None = None) -> None:
             pipeline.index(corpus)
         case "search":
             cmd_search(corpus, args.question, args.rerank)
+        case "ask":
+            cmd_ask(corpus, args.question)
         case "golden":
             cmd_golden(corpus)
         case "eval":

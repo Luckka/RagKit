@@ -85,6 +85,7 @@ uv run ragkit download aws-well-architected   # fetches the official PDFs (not s
 uv run ragkit ingest   aws-well-architected   # Docling parse + chunking
 uv run ragkit index    aws-well-architected   # embeddings + BM25 into Pinecone
 uv run ragkit search   aws-well-architected "How should I protect data at rest?" --rerank
+uv run ragkit ask      aws-well-architected "How should I protect data at rest?"
 uv run ragkit golden   aws-well-architected   # draft a synthetic golden set for review
 uv run ragkit eval     aws-well-architected   # compare all retrieval configurations
 ```
@@ -188,7 +189,7 @@ tests/          offline unit tests, all external services faked
 - [x] Hybrid retrieval with RRF, query hints and namespaces
 - [x] Cross-encoder reranking and retrieval evaluation harness
 - [x] Config-driven heading repair and metadata tags, measured before/after
-- [ ] `/ask` endpoint: grounded answers with page-level citations
+- [x] `/ask` endpoint and `ragkit ask`: grounded answers with page-level citations and refusal when the context lacks the answer
 - [ ] Generation evals with RAGAS (faithfulness, answer relevancy, context precision)
 - [ ] Guardrails: prompt-injection screening, PII redaction, refusal when context is missing
 - [ ] Docker image and AWS deployment
