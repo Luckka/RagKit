@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Secrets
+.env
+
+# Data never lives in git: corpora are downloaded by scripts, artifacts are rebuilt
+data/
+*.pdf
+*.docx
+*.jsonl
+corpora/*/raw/

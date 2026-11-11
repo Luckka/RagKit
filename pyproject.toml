@@ -1,0 +1,31 @@
+[project]
+name = "ragkit"
+version = "0.1.0"
+description = "Production-grade, provider-agnostic RAG toolkit: hybrid search (dense + BM25) with RRF, cross-encoder reranking, metadata-aware query routing and built-in retrieval evaluation."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Lucka Silva", email = "luckadev.silva@gmail.com" }]
+requires-python = ">=3.12"
+dependencies = [
+    "boto3>=1.43.127",
+    "docling>=2.149.0",
+    "fastapi>=0.162.2",
+    "openai>=3.48.0",
+    "pinecone>=10.3.0",
+    "pydantic-settings>=2.16.2",
+    "pyyaml>=6.0",
+    "uvicorn>=0.54.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = ["httpx>=0.28.1", "pytest>=9.2.0", "ruff>=0.17.4"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
