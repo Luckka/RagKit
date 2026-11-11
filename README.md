@@ -100,12 +100,24 @@ documents:
 chunking:
   max_chars: 1600
   min_chars: 400
+headings:               # optional: fix PDFs that export every heading at the same level
+  default_level: 1
+  rules:
+    - pattern: '^Chapter \d+'      # regex on the heading text -> heading level
+      level: 1
+    - pattern: '^(Overview|Steps)$'
+      level: 2
+tags:                   # optional: copy ids from the heading path into chunk metadata
+  - field: ticket
+    pattern: '^(OPS-\d+)'
 hints:                  # optional: identifiers worth boosting when a question mentions them
   - field: ticket
     pattern: '(?i)\b(OPS)-?(\d{1,4})\b'
     template: '{0}-{1}'
 profile: my_package.profiles:HandbookProfile   # optional document-specific cleanup
 ```
+
+Many PDFs lose their heading hierarchy on export, so every heading arrives at the same level and hundreds of chunks end up with a generic breadcrumb such as "Implementation steps". `headings` rules restore the levels from the heading text, and `tags` copy identifiers from the heading path into each chunk's metadata, where they can be filtered or boosted. Both are configuration, not code.
 
 A `Profile` is a single method, `process(elements) -> elements`, for rules that only make sense for one document type, such as running headers or numbering schemes. The pipeline itself never mentions a specific corpus.
 
@@ -122,9 +134,30 @@ A `Profile` is a single method, `process(elements) -> elements`, for rules that 
 | `dense+rerank` | embeddings, top 30 | cross-encoder |
 | `hybrid+rerank` | hybrid + hints, top 30 | cross-encoder |
 
-Metrics: **hit@k**, the share of questions whose relevant chunk is in the top k, and **MRR@10**, the mean reciprocal rank of the first relevant chunk. A retrieved chunk counts as relevant if it is the source chunk or covers the same section and pages, for example the other half of a split table.
+Metrics: **hit@k**, the share of questions whose relevant chunk is in the top k, and **MRR@10**, the mean reciprocal rank of the first relevant chunk. A retrieved chunk counts as relevant if it is the source chunk or covers the same section and pages, for example the other half of a split table. With `--match source`, relevance is decided by source file and page overlap only, so one golden set stays valid when the chunking changes and before/after runs are directly comparable.
 
-Public results on the AWS Well-Architected corpus will be published here after the first full run.
+### Results: AWS Well-Architected (2 PDFs, 25 synthetic questions)
+
+The first ingestion produced flat breadcrumbs: the PDFs export every heading at the same level, so about 1,000 chunks were labeled only "Implementation guidance" or "Implementation steps". Adding five `headings` rules and two `tags` rules to `corpus.yaml` rebuilt the hierarchy; 1,861 of 2,960 chunks now carry their best-practice id (for example `SEC08-BP02`). Same golden set, same relevance rule (`--match source`):
+
+| Config | hit@1 | hit@5 | hit@10 | MRR@10 |
+| --- | --- | --- | --- | --- |
+| `dense`, flat headings | 0.32 | 0.52 | 0.56 | 0.41 |
+| `dense`, rebuilt headings | 0.44 | 0.72 | 0.76 | 0.56 |
+| `sparse`, flat headings | 0.16 | 0.48 | 0.52 | 0.26 |
+| `sparse`, rebuilt headings | 0.24 | 0.60 | 0.72 | 0.37 |
+| `hybrid`, flat headings | 0.28 | 0.52 | 0.52 | 0.39 |
+| `hybrid`, rebuilt headings | 0.44 | 0.72 | 0.80 | 0.57 |
+| `hybrid+rerank`, flat headings | 0.40 | 0.56 | 0.56 | 0.45 |
+| `hybrid+rerank`, rebuilt headings | **0.64** | **0.80** | **0.88** | **0.70** |
+
+What it shows:
+
+- Fixing document structure moved hybrid hit@10 from 0.52 to 0.80 without changing any model.
+- The cross-encoder then added 20 points of hit@1 (0.44 to 0.64), turning good recall into a correct first result.
+- `hybrid+hints` matched `hybrid` exactly, because no golden question names a best-practice id. The eval set must cover the behavior being measured; id-based questions are the next addition.
+
+Rerank calls (Cohere Rerank 3.5 on Bedrock) are cached by candidate set, because approximate nearest-neighbor order varies slightly between runs and an order-sensitive cache key re-billed identical requests.
 
 ## Project layout
 
@@ -154,6 +187,7 @@ tests/          offline unit tests, all external services faked
 - [x] Structure-aware ingestion for any Docling-supported format
 - [x] Hybrid retrieval with RRF, query hints and namespaces
 - [x] Cross-encoder reranking and retrieval evaluation harness
+- [x] Config-driven heading repair and metadata tags, measured before/after
 - [ ] `/ask` endpoint: grounded answers with page-level citations
 - [ ] Generation evals with RAGAS (faithfulness, answer relevancy, context precision)
 - [ ] Guardrails: prompt-injection screening, PII redaction, refusal when context is missing
